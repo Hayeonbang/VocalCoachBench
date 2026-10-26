@@ -47,4 +47,6 @@ For public hosting, stage only the intended static assets and the referenced
 relative path; do not publish the repository root. No remote hosting or
 deployment is performed by these build scripts.
 
+Live site: https://hayeonbang.github.io/VocalCoachBench/ (branch `gh-pages` of github.com/Hayeonbang/VocalCoachBench; to update, copy this folder minus `scripts/` to that branch and swap the dataset-browser link to the Hugging Face URL).
+
 Links: paper arXiv:2609.04241, dataset https://huggingface.co/datasets/Hayeonbang/VocalCoachBench, code https://github.com/Hayeonbang/VocalCoachBench.
