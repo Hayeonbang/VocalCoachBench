@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VocalCoachBench</title>
+  <meta name="description" content="A benchmark for expert vocal coaching feedback on singing audio.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a class="brand" href="#top">VocalCoachBench</a>
+  <div class="links">
+    <a href="#dataset">Dataset</a>
+    <a href="#listen">Listen</a>
+    <a href="#compare">Models vs. experts</a>
+    <a href="#leaderboard">Leaderboard</a>
+    <a href="#data">Data</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <p class="kicker">NeurIPS 2026 · Evaluations &amp; Datasets Track</p>
+    <h1>VocalCoachBench</h1>
+    <p class="hook">Can audio-language models coach your singing like a vocal trainer?</p>
+    <p class="lede">Vocal coaching asks more of a model than hearing and describing audio.
+      A coach listens to the singer, <b>finds what is wrong, decides what to fix first, and knows how to fix each problem</b>.
+      VocalCoachBench measures whether audio-language models can do this, against 18 professional vocal trainers on 515 recordings.
+      So far they spot broad problem areas, <b>but rarely the specific issue a coach would fix first</b>.</p>
+    <p class="authors"><a href="https://hayeonbang.github.io/" target="_blank" rel="noopener">Hayeon Bang</a><span>Hounsu Kim</span><span>Wonil Kim</span><span>Juhan Nam</span><span class="affil">KAIST</span></p>
+    <div class="cta">
+      <a class="btn primary" href="https://arxiv.org/abs/2609.04241" target="_blank" rel="noopener">Paper · arXiv</a>
+      <a class="btn" href="https://huggingface.co/datasets/Hayeonbang/VocalCoachBench" target="_blank" rel="noopener">Dataset · Hugging Face</a>
+      <a class="btn" href="https://github.com/Hayeonbang/VocalCoachBench" target="_blank" rel="noopener">Code · GitHub</a>
+    </div>
+    <figure class="overview">
+      <img src="assets/vcb_overview.png" alt="Overview of VocalCoachBench: singing audio from two subsets is annotated by vocal trainers with Top-3 issues, triplet rankings, free-form coaching feedback and segment labels; models are evaluated on structured targets and claim-based open-ended feedback.">
+    </figure>
+    <div class="tiles">
+      <div class="tile"><b>515</b><span>recordings</span></div>
+      <div class="tile"><b>18</b><span>expert trainers</span></div>
+      <div class="tile"><b>1,056</b><span>expert submissions</span></div>
+      <div class="tile"><b>12,051</b><span>atomic claims</span></div>
+      <div class="tile"><b id="model-count">13</b><span>models evaluated</span></div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section id="dataset" class="section">
+  <div class="wrap">
+    <h2><span class="num">01</span>Dataset design</h2>
+    <div class="design">
+      <div class="step">
+        <span class="step-n">1</span>
+        <h3>Scores are not enough</h3>
+        <p><b>Scores failed in pilots.</b> Trainers apply different thresholds to the same scale.</p>
+        <p><b>So we annotate coaching actions:</b> identify · diagnose · prescribe · compare · localize.</p>
+      </div>
+      <div class="step">
+        <span class="step-n">2</span>
+        <h3>Two subsets for two needs</h3>
+        <div class="sub-row"><span class="sub-name"><b class="sub-title">Same-song subset</b></span><b>207</b><p><b>One song, <em>Amazing Grace</em>, for everyone.</b> Takes can be ranked against each other.</p></div>
+        <div class="sub-row"><span class="sub-name"><b class="sub-title">Diverse-song subset</b></span><b>308</b><p><b>Different songs from nine public datasets.</b> Varied styles and registers, closer to real coaching.</p></div>
+      </div>
+      <div class="step">
+        <span class="step-n">3</span>
+        <h3>One protocol per recording</h3>
+        <p><b>Per trainer:</b> listen to the full take → review in issue-tagged blocks → rank the Top-3 issues.</p>
+        <p><b>Same-song</b> adds a ranked triplet, because takes of one song are directly comparable. <b>Diverse-song</b> adds problem regions marked on the waveform, because with different songs the question is where the problem is, not who sang better. Two trainers per recording.</p>
+      </div>
+      <div class="step">
+        <span class="step-n">4</span>
+        <h3>From reviews to evaluable targets</h3>
+        <p><b>Reviews → atomic claims:</b> diagnosis, correction (linked to its issue), strength.</p>
+        <p><b>Structured targets</b> are scored deterministically. <b>Free-form feedback</b> is scored claim by claim, since trainers prioritize differently.</p>
+      </div>
+    </div>
+    <div class="taxonomy">
+      <div class="tax-head">Issue taxonomy <span>7 labels · 3 parent categories</span></div>
+      <div class="tax-grid">
+        <div class="tax-g"><span class="tax-p">Musical accuracy</span><div class="tax-chips"><span class="chip" style="--c:var(--pitch)">PITCH</span><span class="chip" style="--c:var(--rhythm)">RHYTHM</span></div></div>
+        <div class="tax-g"><span class="tax-p">Technical production</span><div class="tax-chips"><span class="chip" style="--c:var(--breath)">BREATH</span><span class="chip" style="--c:var(--vocalization)">PHONATION</span><span class="chip" style="--c:var(--technique)">TECHNIQUE</span></div></div>
+        <div class="tax-g"><span class="tax-p">Delivery</span><div class="tax-chips"><span class="chip" style="--c:var(--diction)">DICTION</span><span class="chip" style="--c:var(--expression)">EXPRESSION</span></div></div>
+      </div>
+    </div>
+    <details class="details counts"><summary>Counts by subset</summary>
+    <div class="table-wrap"><table class="spec">
+      <thead><tr><th>Annotation</th><th>Same-song</th><th>Diverse-song</th><th>Used for</th></tr></thead>
+      <tbody>
+        <tr><td>Annotators</td><td class="n">6</td><td class="n">12</td><td>Two independent reviews per recording</td></tr>
+        <tr><td>Coaching review <span class="tip" title="Free-form review written to the singer, in tagged feedback blocks, then decomposed into atomic diagnosis / correction / strength claims.">→ atomic claims</span></td><td class="n">1,397 blocks · 3,972 claims</td><td class="n">3,046 blocks · 8,079 claims</td><td>Open-ended diagnosis and correction (judge-based)</td></tr>
+        <tr><td>Top-3 issue labels</td><td class="n">✓</td><td class="n">✓</td><td>Top-3 issue prediction</td></tr>
+        <tr><td>Triplet ranking <span class="tip" title="Three performances of the same song ranked by the trainer, with a written rationale.">of 3 performances</span></td><td class="n">450 rankings · 189 eval triplets</td><td class="n">–</td><td>Pairwise ranking accuracy, Kendall's τ</td></tr>
+        <tr><td>Segment-grounded feedback</td><td class="n">–</td><td class="n">2,526 segments · 262 consensus events</td><td>Segment issue classification</td></tr>
+      </tbody>
+    </table></div>
+    </details>
+    <p class="claims-line">Atomic claims: <b>6,087</b> diagnosis · <b>4,527</b> correction · <b>1,437</b> strength.</p>
+  </div>
+</section>
+
+<section id="listen" class="section alt">
+  <div class="wrap">
+    <h2><span class="num">02</span>Expert annotations</h2>
+    <p class="intro">Four diverse-song recordings, two trainers each. Corrections are colour-linked to the issue they target.</p>
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Feedback language">
+        <button class="on" data-lang="en">English</button>
+        <button data-lang="ko">한국어</button>
+      </div>
+    </div>
+    <div id="showcase" class="cards"></div>
+  </div>
+</section>
+
+<section id="compare" class="section">
+  <div class="wrap">
+    <h2><span class="num">03</span>Model feedback vs. expert claims</h2>
+    <p class="intro">The model listens to the same recording and writes feedback. A judge then checks it claim by claim against the trainers.</p>
+    <div class="howto">
+      <div class="how"><span class="step-n">1</span><p><b>The model writes feedback</b>: five diagnoses and five corrections, or free text that is split into claims afterwards.</p></div>
+      <div class="how"><span class="step-n">2</span><p><b>Each expert diagnosis is checked against the model's diagnoses.</b></p>
+        <div class="legend"><span class="badge strict"><i class="g"></i><b>strict hit</b></span><span class="badge coarse"><i class="g"></i><b>coarse hit</b></span><span class="badge miss"><i class="g"></i><b>miss</b></span><span class="badge contradict"><i class="g"></i><b>contradict</b></span></div></div>
+      <div class="how"><span class="step-n">3</span><p><b>Each model correction is graded on its own.</b></p>
+        <div class="legend"><span class="badge valid"><i class="g"></i><b>valid</b></span><span class="badge weak"><i class="g"></i><b>weak</b></span><span class="badge invalid"><i class="g"></i><b>invalid</b></span></div></div>
+    </div>
+    <div class="toolbar">
+      <span class="hint">Recording</span>
+      <div class="seg" id="compare-tabs" role="tablist" aria-label="Recording"></div>
+    </div>
+    <div id="compare-body"></div>
+  </div>
+</section>
+
+<section id="leaderboard" class="section alt">
+  <div class="wrap">
+    <h2><span class="num">04</span>Leaderboard</h2>
+    <p class="intro">13 aligned models: 9 open-weight and 4 closed API models. Updated 26 October 2026 from verified evaluation artifacts. Click a header to sort.</p>
+    <p class="finding">Top-3 uses seven-class macro-F1, not the older F1@3 overlap metric. Scores below are percentages; N/A means unavailable, not zero.</p>
+    <div class="toolbar">
+      <label class="check"><input type="checkbox" id="allcols"> Show all columns</label>
+    </div>
+    <div class="table-wrap"><table id="lb" class="lb"></table></div>
+    <details class="details">
+      <summary>Details</summary>
+      <ul>
+        <li><b>Denominator.</b> All 515 recordings (same-song 207, diverse-song 308), <code>strict_all_attempts</code>: malformed or missing outputs count as errors.</li>
+        <li><b>Top-3.</b> Seven-class macro-F1 over 1,064 expert references, with each recording given equal total weight. PHONATION and the legacy internal label VOCALIZATION denote the same class.</li>
+        <li><b>Judge.</b> <code>openai/gpt-oss-120b</code>: diagnosis = strict hit / coarse hit / miss / contradict; correction = valid / weak / invalid. Simple-protocol reviews are first decomposed into claims by the same model.</li>
+        <li><b>Protocols.</b> Main = structured JSON prompts; Simple = short prompts with a distinct extraction protocol. Open/Closed identifies model access, not a separate evaluation protocol. The majority baseline sees no audio and has only a Top-3 metric.</li>
+        <li><b>Ranking.</b> Score-derived and Direct pairwise accuracy are separate tasks: 189 same-song triplets, 567 pair decisions, 1,134 expert-reference attempts. Audio Flamingo 3 and Music Flamingo Direct use concatenated audio; Covo Direct is N/A.</li>
+        <li><b>Other denominators.</b> Segment: 262. Diagnosis: 6,162 expert claims. Prescription validity: 2,575 fixed slots (515 × 5), including missing slots as failures; not validity conditional on emitted prescriptions.</li>
+        <li><b>Claims policy.</b> Corrected515 format-reported: empty, unparseable or backend-error outputs retain zero claims and remain in the fixed denominator. See per-model notes for generation and parsing exceptions.</li>
+      </ul>
+      <div id="leaderboard-provenance" class="fine"></div>
+      <div id="leaderboard-notes"></div>
+    </details>
+  </div>
+</section>
+
+</main>
+
+<footer id="data" class="section">
+  <div class="wrap">
+    <h2><span class="num">05</span>Source datasets and license</h2>
+    <p class="intro">Audio is redistributed where the source license allows it; other recordings are matched by filename from the official releases.</p>
+    <div class="table-wrap"><table id="sources" class="sources"></table></div>
+    <div class="cta">
+      <a class="btn primary" href="https://huggingface.co/datasets/Hayeonbang/VocalCoachBench" target="_blank" rel="noopener">Browse the full dataset</a>
+    </div>
+    <div class="cite">
+      <div class="cite-head">Citation</div>
+<pre>@inproceedings{bang2026vocalcoachbench,
+  title     = {VocalCoachBench: Benchmarking Audio-Language Models on Expert Feedback for Singing},
+  author    = {Bang, Hayeon and Kim, Hounsu and Kim, Wonil and Nam, Juhan},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS), Evaluations and Datasets Track},
+  year      = {2026},
+  note      = {arXiv:2609.04241}
+}</pre>
+    </div>
+  </div>
+</footer>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
