@@ -12,6 +12,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from vocalcoachbench.io import read_jsonl, write_json
+from vocalcoachbench.protocol import DATASET_VERSION, canonical_recording_predictions, scoring_provenance
 from vocalcoachbench.metrics import (
     evaluate_direct_triplets,
     evaluate_score_triplets,
@@ -47,8 +48,9 @@ def evaluate_task(
     details: list[dict[str, Any]],
     output_dir: Path,
     save_details: bool,
+    provenance: dict[str, Any],
 ) -> dict[str, Any]:
-    task_payload: dict[str, Any] = {"summary": summary}
+    task_payload: dict[str, Any] = {"summary": summary, "provenance": provenance}
     write_json(output_dir / f"{name}.json", task_payload)
     if save_details:
         write_json(output_dir / f"{name}_details.json", details)
@@ -67,6 +69,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--scores", default=None, help="Optional single-audio score prediction JSONL path.")
     parser.add_argument("--segment", default=None, help="Optional segment prediction JSONL path.")
     parser.add_argument("--details", action="store_true", help="Write per-sample detail files.")
+    parser.add_argument("--require-canonical", action="store_true", help="Require canonical prepared references and their receipt.")
+    parser.add_argument("--claims-samples", help="Saved canonical Claims samples JSONL.")
+    parser.add_argument("--claims-jobs", help="Saved Claims judge jobs JSONL.")
+    parser.add_argument("--claims-outcomes", help="Saved Claims judge outcomes JSONL.")
+    parser.add_argument("--hf-root", help="Canonical HF release directory for Claims reference validation.")
+    parser.add_argument("--model", help="Optional Claims model identifier.")
     return parser
 
 
@@ -99,6 +107,15 @@ def main() -> None:
     )
 
     report: dict[str, Any] = {"tasks": {}, "missing": {}}
+    report["provenance"] = {}
+    for task, reference, prediction in (
+        ("direct_pairwise_triplet", pair_manifest, direct_predictions),
+        ("top3", top3_refs, top3_predictions),
+        ("score_triplet", pair_manifest, score_predictions),
+        ("segment", segment_refs, segment_predictions),
+    ):
+        if reference and prediction and reference.exists() and prediction.exists():
+            report["provenance"][task] = scoring_provenance(reference, prediction, require_canonical=args.require_canonical)
 
     if pair_manifest and direct_predictions and direct_predictions.exists():
         summary, details = evaluate_direct_triplets(read_jsonl(pair_manifest), read_jsonl(direct_predictions))
@@ -108,6 +125,7 @@ def main() -> None:
             details,
             output_dir,
             args.details,
+            report["provenance"]["direct_pairwise_triplet"],
         )
     else:
         report["missing"]["direct_pairwise_triplet"] = {
@@ -116,8 +134,12 @@ def main() -> None:
         }
 
     if top3_refs.exists() and top3_predictions and top3_predictions.exists():
-        summary, details = evaluate_top3(read_jsonl(top3_refs), read_jsonl(top3_predictions))
-        report["tasks"]["top3"] = evaluate_task("top3", summary, details, output_dir, args.details)
+        rows = read_jsonl(top3_predictions)
+        provenance = report["provenance"]["top3"]
+        if provenance["dataset_version"] == DATASET_VERSION:
+            rows, _ = canonical_recording_predictions(top3_refs, rows)
+        summary, details = evaluate_top3(read_jsonl(top3_refs), rows)
+        report["tasks"]["top3"] = evaluate_task("top3", summary, details, output_dir, args.details, provenance)
     else:
         report["missing"]["top3"] = {
             "reference": str(top3_refs),
@@ -125,8 +147,13 @@ def main() -> None:
         }
 
     if pair_manifest and score_predictions and score_predictions.exists():
-        summary, details = evaluate_score_triplets(read_jsonl(pair_manifest), read_jsonl(score_predictions))
-        report["tasks"]["score_triplet"] = evaluate_task("score_triplet", summary, details, output_dir, args.details)
+        rows = read_jsonl(score_predictions)
+        provenance = report["provenance"]["score_triplet"]
+        expected_ids = None
+        if provenance["dataset_version"] == DATASET_VERSION:
+            rows, expected_ids = canonical_recording_predictions(pair_manifest, rows)
+        summary, details = evaluate_score_triplets(read_jsonl(pair_manifest), rows, expected_audio_ids=expected_ids)
+        report["tasks"]["score_triplet"] = evaluate_task("score_triplet", summary, details, output_dir, args.details, provenance)
     else:
         report["missing"]["score_triplet"] = {
             "reference": str(pair_manifest) if pair_manifest else "triplet_pairs.jsonl",
@@ -135,13 +162,24 @@ def main() -> None:
 
     if segment_refs.exists() and segment_predictions and segment_predictions.exists():
         summary, details = evaluate_segment(read_jsonl(segment_refs), read_jsonl(segment_predictions))
-        report["tasks"]["segment"] = evaluate_task("segment", summary, details, output_dir, args.details)
+        report["tasks"]["segment"] = evaluate_task("segment", summary, details, output_dir, args.details, report["provenance"]["segment"])
     else:
         report["missing"]["segment"] = {
             "reference": str(segment_refs),
             "prediction": str(segment_predictions) if segment_predictions else "not found",
         }
 
+    claim_args = [args.claims_samples, args.claims_jobs, args.claims_outcomes, args.hf_root]
+    if any(claim_args):
+        if not all(claim_args):
+            raise ValueError("Claims replay requires --claims-samples, --claims-jobs, --claims-outcomes and --hf-root")
+        from vocalcoachbench.claims import evaluate_claims
+        claim_report = evaluate_claims(args.claims_samples, args.claims_jobs, args.claims_outcomes,
+                                      reference_root=args.hf_root, model=args.model)
+        write_json(output_dir / "claims.json", claim_report)
+        report["tasks"]["claims"] = claim_report
+    else:
+        report["missing"]["claims"] = {"reason": "Saved judge jobs/outcomes were not supplied; no judge calls were made."}
     write_json(output_dir / "all_metrics.json", report)
     print(json.dumps(report, ensure_ascii=False, indent=2))
 

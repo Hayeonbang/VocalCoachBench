@@ -1,82 +1,40 @@
-# Submission Guide
+# Submission guide
 
-This repository provides the public scorer. A complete benchmark submission
-contains prediction JSONL files for the tasks being evaluated.
+Prepare the pinned canonical dataset as described in
+[dataset preparation](huggingface_dataset.md), then preserve one first-attempt
+response for each expected ID. Record model revision, prompt hash, Main/Simple
+protocol, audio preprocessing, decoding settings and failures. Do not replace
+failed responses with successful retries in the same result artifact.
 
-The benchmark dataset provides the reference files. Participants provide model
-prediction files. The scorer combines those two sets of files to compute metrics.
-If a model returns raw text rather than canonical JSONL fields, normalize the
-outputs with `scripts/postprocess_predictions.py` before scoring.
-The small `examples/raw_*_outputs.jsonl` files only demonstrate this
-normalization step.
+Use the formats in [data formats](data_format.md). If your adapter produces raw
+text, normalize it with the matching [parser](postprocessing.md). Keep the raw
+logs as provenance. Submit task-specific files:
 
-In other words, `raw_outputs/*.jsonl` is optional and archival; `predictions/*.jsonl`
-is the scorer input.
+- `top3_predictions.jsonl`: all 515 recording IDs; three ranked issue labels.
+- `score_predictions.jsonl`: explicit quality scores in [0, 5], using the same
+  recording inventory. Main can reuse the normalized Top-3/score output; Simple
+  uses its separate score request.
+- `segment_predictions.jsonl`: 262 segment IDs; one issue label each.
+- `direct_pairwise_predictions.jsonl`: 567 pair IDs; A/B winner with presented
+  audio identities. Missing or invalid winners receive no credit.
 
-If the benchmark data is downloaded from Hugging Face, first run
-`scripts/prepare_hf_release.py` as described in `docs/huggingface_dataset.md`.
-Then pass the prepared directory via `--data-dir`.
-
-To evaluate all available tasks in one command:
-
-```bash
-python scripts/evaluate_all.py \
-  --data-dir data \
-  --predictions-dir predictions \
-  --output-dir results
-```
-
-## Direct Pairwise Triplet Ranking
-
-Run each pair from the released manifest with the direct pairwise prompt:
+Run the structured scorer:
 
 ```bash
-vocalcoachbench evaluate-triplet \
-  --pairs data/triplet_pairs.jsonl \
-  --predictions predictions/my_model_direct_pairwise.jsonl \
-  --out results/my_model_triplet.json
+python scripts/evaluate_all.py --data-dir data --predictions-dir predictions --output-dir results --require-canonical --details
 ```
 
-The model should receive two labeled audio inputs, Audio A and Audio B, and
-choose the better performance. The ranking is reconstructed from the three pair
-decisions in each triplet.
+If Main scores are kept in the Top-3 file, additionally pass
+`--scores predictions/top3_predictions.jsonl`.
 
-Auxiliary score-derived triplet ranking can be computed from single-audio
-quality scores:
+For Claims, follow [Claims preparation and judging](claims.md), then add
+`--claims-samples`, `--claims-jobs`, `--claims-outcomes`, and `--hf-root` to the
+combined command, or use `vocalcoachbench evaluate-claims` separately. Missing
+model claims retain the fixed denominators; unresolved judge outcomes prevent
+a complete Claims result.
 
-```bash
-vocalcoachbench evaluate-score-triplet \
-  --pairs data/triplet_pairs.jsonl \
-  --scores predictions/my_model_scores.jsonl \
-  --out results/my_model_score_triplet.json
-```
-
-## Top-3 Issue Prediction
-
-```bash
-vocalcoachbench evaluate-top3 \
-  --references data/top3_references.jsonl \
-  --predictions predictions/my_model_top3.jsonl \
-  --out results/my_model_top3.json
-```
-
-Submit exactly three issue categories per audio, ordered from most serious to
-third most serious.
-
-## Segment-Level Issue Classification
-
-```bash
-vocalcoachbench evaluate-segment \
-  --references data/segment_references.jsonl \
-  --predictions predictions/my_model_segment.jsonl \
-  --out results/my_model_segment.json
-```
-
-Submit one issue category per short segment.
-
-## Open-Ended Feedback
-
-Open-ended coaching feedback is evaluated through claim extraction and judge
-models. The prompt templates in `prompts/` define the expected structured
-claims. Judge execution is backend-specific and is not part of the deterministic
-scorer CLI.
+Include the output JSON reports, preparation receipt and original prediction
+artifacts with a submission. State dataset version
+`canonical515_physical_audio_1064refs`, protocol, denominator and
+`strict_all_attempts`. The combined report explicitly lists unavailable tasks;
+a partial task set is not a complete benchmark submission.

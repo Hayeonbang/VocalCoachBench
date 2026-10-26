@@ -1,8 +1,17 @@
 cff-version: 1.2.0
-title: VocalCoachBench
+title: "VocalCoachBench: Benchmarking Audio-Language Models on Expert Feedback for Singing"
 message: "If you use VocalCoachBench, please cite the benchmark paper."
 type: software
 authors:
-  - name: Anonymous Authors
-version: 0.1.0
+  - family-names: Bang
+    given-names: Hayeon
+  - family-names: Kim
+    given-names: Hounsu
+  - family-names: Kim
+    given-names: Wonil
+  - family-names: Nam
+    given-names: Juhan
+version: 0.2.0
+url: https://arxiv.org/abs/2609.04241
+doi: 10.48550/arXiv.2609.04241
 license: MIT

@@ -1,8 +1,9 @@
 # Hugging Face Dataset Usage
 
-The full benchmark dataset is distributed separately from this evaluator
-repository. The expected Hugging Face release has a top-level
-`VocalCoachBench_annotations/` directory:
+Download [Hayeonbang/VocalCoachBench, revision v2026.10.26](https://huggingface.co/datasets/Hayeonbang/VocalCoachBench/tree/v2026.10.26).
+The public snapshot has `annotations/`, `metadata/`, `evaluation/` and `audio/`
+at its root. The older nested `VocalCoachBench_annotations/` layout below is
+also accepted:
 
 ```text
 VocalCoachBench_annotations/
@@ -18,6 +19,8 @@ VocalCoachBench_annotations/
     top3_issue_annotations.jsonl
     triplet_rankings.jsonl
   metadata/
+    CANONICAL_EVALUATION.md
+    top3_join_policy.json
     category_ontology.json
     triplet_ranking_policy.json
     release_stats.json
@@ -26,8 +29,8 @@ VocalCoachBench_annotations/
     segment_clips_iou03/
 ```
 
-The evaluator does not score those raw annotation files directly. First convert
-the release into scorer-ready files:
+Prepare structured references from the raw annotations. The script checks the
+six pinned annotation hashes and canonical 515/1,064 coverage before writing:
 
 ```bash
 python scripts/prepare_hf_release.py \
@@ -51,13 +54,14 @@ data/
   top3_references.jsonl
   segment_references.jsonl
   segment_metadata.jsonl
+  prepare_summary.json
   audio/
     ...
 ```
 
-Only the reference JSONL files are required for scoring existing prediction
-files. Audio files and metadata are required when generating new model
-predictions.
+Keep all generated JSONL files and the receipt together for canonical scoring.
+The audio inventory validates prediction IDs even when scoring saved responses;
+audio waveforms themselves are required only for new model inference.
 
 For model inference, use the paths in the prepared metadata files. Use
 `data/top3_audio_metadata.jsonl` for Top-3 issue prediction and score-derived
@@ -66,7 +70,7 @@ triplet inference, and `data/segment_metadata.jsonl` for segment inference.
 lookup. If a row has `path: null`, that audio is not directly runnable from the
 prepared release; resolve it from the source dataset metadata or from your local
 audio store before running inference.
-In the paper release, `top3_audio_metadata.jsonl` has packaged paths for 190 of
+In this release, `top3_audio_metadata.jsonl` has packaged paths for 191 of
 515 Top-3/score audios, and `segment_metadata.jsonl` has packaged paths for 166
 of 262 segment rows; the remaining rows are still valid benchmark references but
 must be resolved from the original source datasets or a local audio store before
@@ -96,7 +100,9 @@ model inference.
 : Segment identifiers and paths for segment inference.
 
 `prepare_summary.json`
-: Counts and conversion settings used by `scripts/prepare_hf_release.py`.
+: Canonical dataset version, source hashes, prepared-file hashes, counts and
+  conversion settings. `--require-canonical` validates this receipt and the
+  pinned reference content rather than trusting a row count alone.
 
 With the default clean triplet policy, `prepare_summary.json` should report:
 
@@ -110,8 +116,8 @@ With the default clean triplet policy, `prepare_summary.json` should report:
   "audio_path_count": 191,
   "audio_path_missing_count": 324,
   "top3_audio_metadata_count": 515,
-  "top3_audio_path_count": 190,
-  "top3_audio_path_missing_count": 325,
+  "top3_audio_path_count": 191,
+  "top3_audio_path_missing_count": 324,
   "segment_path_count": 166,
   "segment_path_missing_count": 96
 }
@@ -188,4 +194,10 @@ python scripts/evaluate_all.py \
 The evaluator repository intentionally does not include the full audio dataset.
 The `data/` directory is ignored by git.
 
-The evaluator uses only files under `VocalCoachBench_annotations/`.
+Dataset version is `canonical515_physical_audio_1064refs`. Never resolve the
+four colliding Dataset-B filename pairs by filename alone. Use the canonical
+recording inventory and physical-audio identities. Segment remains the frozen
+262-event set used for the final leaderboard; see `metadata/PUBLIC_RELEASE.md`.
+
+Use `--require-canonical` on published benchmark scores. `--triplet-policy all`
+prepares a diagnostic set and cannot be reported as canonical ranking.

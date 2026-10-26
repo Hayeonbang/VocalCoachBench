@@ -18,3 +18,5 @@ jobs:
         run: python -m py_compile vocalcoachbench/*.py
       - name: Run examples
         run: scripts/run_examples.sh
+      - name: Unit and policy regression tests
+        run: python -m unittest discover -s tests -v

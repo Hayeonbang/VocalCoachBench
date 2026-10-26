@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
-import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -16,10 +15,11 @@ if str(ROOT) not in sys.path:
 
 from vocalcoachbench.io import read_jsonl, write_json, write_jsonl
 from vocalcoachbench.taxonomy import normalize_category_list
+from vocalcoachbench.protocol import sha256, validate_release
 
 
 def release_root(path: str | Path) -> Path:
-    root = Path(path)
+    root = Path(path).resolve()
     if (root / "annotations").exists():
         return root
     nested = root / "VocalCoachBench_annotations"
@@ -152,10 +152,6 @@ def build_triplet_pairs(annotation_dir: Path, triplet_policy: str) -> tuple[list
     return pair_rows, summary
 
 
-def remove_local_copy_suffix(value: object) -> str:
-    return re.sub(r" \(\d+\)$", "", str(value))
-
-
 def audio_id_from_recording(row: dict[str, Any]) -> str:
     return str(row.get("audio_id") or str(row["recording_id"]).split("_", 1)[-1])
 
@@ -164,8 +160,9 @@ def build_recording_lookup(annotation_dir: Path) -> dict[str, dict[str, Any]]:
     lookup: dict[str, dict[str, Any]] = {}
     for row in read_jsonl(annotation_dir / "recordings.jsonl"):
         audio_id = audio_id_from_recording(row)
+        if audio_id in lookup:
+            raise ValueError(f"Duplicate recording audio_id: {audio_id}")
         lookup[audio_id] = row
-        lookup.setdefault(remove_local_copy_suffix(audio_id), row)
     return lookup
 
 
@@ -204,10 +201,9 @@ def prepared_audio_path(path: object, out_dir: Path) -> str | None:
 
 def audio_metadata_row(row: dict[str, Any], out_dir: Path, *, audio_id: str | None = None) -> dict[str, Any]:
     output_audio_id = audio_id or audio_id_from_recording(row)
-    dataset = row.get("dataset")
     return {
         "audio_id": output_audio_id,
-        "recording_id": f"{dataset}_{output_audio_id}" if dataset else row.get("recording_id"),
+        "recording_id": row["recording_id"],
         "path": prepared_audio_path(row.get("audio_path"), out_dir),
         "audio_filename": row.get("audio_filename"),
         "audio_redistributed": row.get("audio_redistributed"),
@@ -229,21 +225,9 @@ def build_top3_audio_metadata(annotation_dir: Path, out_dir: Path, top3_referenc
     recording_lookup = build_recording_lookup(annotation_dir)
     rows: list[dict[str, Any]] = []
     for audio_id in sorted({str(row["audio_id"]) for row in top3_references}):
-        source = recording_lookup.get(audio_id) or recording_lookup.get(remove_local_copy_suffix(audio_id))
+        source = recording_lookup.get(audio_id)
         if source is None:
-            rows.append(
-                {
-                    "audio_id": audio_id,
-                    "recording_id": None,
-                    "path": None,
-                    "audio_filename": None,
-                    "audio_redistributed": False,
-                    "audio_access": "No matching recording metadata found; resolve from the source dataset.",
-                    "subset": None,
-                    "source_dataset": None,
-                    "song_title": None,
-                }
-            )
+            raise ValueError(f"Top-3 ID is absent from canonical recording metadata: {audio_id}")
         else:
             rows.append(audio_metadata_row(source, out_dir, audio_id=audio_id))
     return rows
@@ -281,6 +265,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
     root = release_root(args.hf_root)
+    release_info = validate_release(root)
     annotation_dir = root / "annotations"
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -307,9 +292,14 @@ def main() -> None:
     write_jsonl(out_dir / "segment_metadata.jsonl", segment_metadata)
 
     summary = {
+        **release_info,
         "hf_root": str(root),
         "out_dir": str(out_dir),
         **triplet_summary,
+        "triplet_policy": args.triplet_policy,
+        "prepared_file_sha256": {name: sha256(out_dir / name) for name in (
+            "triplet_pairs.jsonl", "top3_references.jsonl", "segment_references.jsonl",
+            "audio_metadata.jsonl", "top3_audio_metadata.jsonl", "segment_metadata.jsonl")},
         "top3_audio_count": len(top3_references),
         "segment_count": len(segment_references),
         "audio_metadata_count": len(audio_metadata),

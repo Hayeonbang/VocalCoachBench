@@ -1,0 +1,95 @@
+{
+  "schema_version": "vcb_public_generation_prompts_v1",
+  "updated_on": "2026-10-26",
+  "dataset_version": "canonical515_physical_audio_1064refs",
+  "prompts": [
+    {
+      "path": "prompts/main/top3_score.txt",
+      "protocol": "main",
+      "surface": "top3",
+      "sha256": "0ead6c54110d5fc2fc6275ff4dc8e0ca7a8955c4dcdd443c816911f96939a8d1",
+      "runtime_stripped_sha256": "0ead6c54110d5fc2fc6275ff4dc8e0ca7a8955c4dcdd443c816911f96939a8d1",
+      "verification": "byte-exact canonical frozen prompt; matched canonical contract and Open9 task contract"
+    },
+    {
+      "path": "prompts/main/segment.txt",
+      "protocol": "main",
+      "surface": "segment",
+      "sha256": "ae494a531752cda26960dbb53b16ee5c50159d6bcf33c9870c6f636732b24770",
+      "runtime_stripped_sha256": "ae494a531752cda26960dbb53b16ee5c50159d6bcf33c9870c6f636732b24770",
+      "verification": "byte-exact canonical frozen prompt; matched canonical contract and Open9 task contract"
+    },
+    {
+      "path": "prompts/main/direct_pairwise.txt",
+      "protocol": "main",
+      "surface": "direct",
+      "sha256": "9696e4892e8b1ba5e1e64d3c804ed021c35ade3fa84667587814bf9c419d59f1",
+      "runtime_stripped_sha256": "81282adcfd0348cc9ed1335ccbe06b2109b357c72c4fd6608471149b25e69a58",
+      "verification": "byte-exact canonical frozen prompt; matched canonical contract and Open9 task contract"
+    },
+    {
+      "path": "prompts/main/claims.txt",
+      "protocol": "main",
+      "surface": "claims",
+      "sha256": "7818e75d3ca585080eea16e202ab1b2b705a7627bd27204e00a62a48cbd6db3a",
+      "runtime_stripped_sha256": "3c9f3cf877903d30ff49f9f534c3b3854564738b4237d6a3860a20af9a6b9a73",
+      "verification": "byte-exact canonical frozen prompt; matched canonical contract and Open9 task contract"
+    },
+    {
+      "path": "prompts/simple/top3.txt",
+      "protocol": "simple",
+      "surface": "simple_top3",
+      "sha256": "11486147ec1963f28d7ce78ba04f8ab77d694bacacc1038694a3eec4acf4e5ac",
+      "runtime_stripped_sha256": "1a3c005f33a02a8f58d3549b9572b20d382a360d3ffd81ca36a7b24f4d931ae5",
+      "verification": "byte-exact frozen Open9 aligned input; matched execution and task contracts",
+      "taxonomy_transform": "VOCALIZATION -> PHONATION only"
+    },
+    {
+      "path": "prompts/simple/score.txt",
+      "protocol": "simple",
+      "surface": "simple_score",
+      "sha256": "33e4585bc2a9cae8837c423249ec05af44291ff0e9f7e9fe15dd7f9677088078",
+      "runtime_stripped_sha256": "dfcd61113dbfe98083fb75e252129b9f97388530bb04dc2f41f00a06556790b0",
+      "verification": "byte-exact frozen Open9 aligned input; matched execution and task contracts",
+      "taxonomy_transform": "none"
+    },
+    {
+      "path": "prompts/simple/segment.txt",
+      "protocol": "simple",
+      "surface": "simple_segment",
+      "sha256": "594512ba2b1d4e5d51c69964c1a6a8733700d1082dde247677ea98aaef7cdcd1",
+      "runtime_stripped_sha256": "50b1c74d256c89a4adfa77808e4b8bf8538486215e949b5042695c57c5176cea",
+      "verification": "byte-exact frozen Open9 aligned input; matched execution and task contracts",
+      "taxonomy_transform": "VOCALIZATION -> PHONATION only"
+    },
+    {
+      "path": "prompts/simple/overall.txt",
+      "protocol": "simple",
+      "surface": "simple_openended",
+      "sha256": "74668cba34df7d7131a6d8a6081404458bf6a79ca39ab0b4fc774e67aea753a1",
+      "runtime_stripped_sha256": "2d96364f29025dcf44e8bdcf2ef7e0af56bd8ef3fa3e0df7458b1a49b35f936b",
+      "verification": "byte-exact frozen Open9 aligned input; matched execution and task contracts",
+      "taxonomy_transform": "none"
+    }
+  ],
+  "model_protocols": {
+    "fun-audio-chat": "main",
+    "kimi-audio": "main",
+    "mimo-audio": "main",
+    "qwen2.5-omni": "main",
+    "qwen3-omni": "main",
+    "r1-aqa": "main",
+    "audio-flamingo-3": "simple",
+    "music-flamingo": "simple",
+    "covo-audio": "simple",
+    "gpt-audio-1.5": "main",
+    "gemini-3-flash-preview": "main",
+    "qwen3.5-omni-flash": "main",
+    "qwen3.5-omni-plus": "main"
+  },
+  "limitations": [
+    "This manifest covers generation prompt files. Judge prompt builders are included in vocalcoachbench.claims; model adapters, system prompts, runtime wrappers and Simple claim-extraction prompts are not bundled.",
+    "Main Direct prompt is for separate labeled A/B inputs. The Audio Flamingo 3 and Music Flamingo concatenated-audio Direct wrappers use interval instructions and are not bundled. Covo-Audio Direct was not evaluated.",
+    "These are frozen protocol texts, not a claim that every reused historical response had identical provider runtime or prompt bytes. Historical VOCALIZATION and current PHONATION are aliases."
+  ]
+}

@@ -1,69 +1,67 @@
-# Reproducing Paper Results
+# Reproducing the final leaderboard
 
-This repository provides the deterministic scorer and the prediction-file
-interface used by the benchmark.
+Evaluator 0.2.0 targets dataset `canonical515_physical_audio_1064refs`, release
+`v2026.10.26`, and the 2026-10-26 leaderboard. Download the pinned
+[dataset release](https://huggingface.co/datasets/Hayeonbang/VocalCoachBench/tree/v2026.10.26).
+The published `evaluation/leaderboard.json` records result definitions and coverage.
 
-## What Is Fully Reproducible Here
+## Workflow
 
-Given the released reference files and model prediction JSONL files, the metric
-values are deterministic:
+1. Prepare canonical references with `scripts/prepare_hf_release.py`. Keep
+   `prepare_summary.json` beside the generated files.
+2. Generate predictions using the appropriate Main or Simple protocol. Preserve
+   the first response and its error state for each manifest ID. Use exact audio
+   identities, not filename-only joins.
+3. Normalize raw responses with `scripts/postprocess_predictions.py` and the
+   matching `--protocol`. An error response must remain an error.
+4. Score structured predictions with the canonical guard:
 
-```bash
-python scripts/evaluate_all.py \
-  --data-dir data \
-  --predictions-dir predictions \
-  --output-dir results
-```
+   ```bash
+   python scripts/evaluate_all.py --data-dir data --predictions-dir predictions --output-dir results --require-canonical --details
+   ```
 
-This computes:
+5. For Claims, supply saved samples, jobs and outcomes through `evaluate-claims`
+   or the corresponding `evaluate_all.py` flags. See [Claims](claims.md).
+6. Report artifact paths and hashes, dataset version, denominator, Main/Simple
+   protocol and `strict_all_attempts`, together with metrics.
 
-- direct pairwise triplet ranking,
-- top-3 issue prediction,
-- auxiliary score-derived triplet ranking,
-- segment-level issue classification.
+## Denominators and errors
 
-## Model Inference
+Top-3 uses 515 recordings and 1,064 expert references, with references averaged
+within each recording. Segment uses the frozen 262-event release. Direct and
+score ranking share 567 pairs from 189 triplets and 1,134 expert-reference
+attempts. Score ties and missing scores receive no pair credit. Claims uses
+6,162 diagnosis references and 2,575 fixed prescription slots across all 515
+recordings. Missing/invalid model outputs do not shrink these denominators.
 
-Model inference is separated from scoring. The template scripts show the
-expected adapter boundary:
+Top-3 and Segment headline metrics are seven-class macro-F1. Top-3 F1@3 and
+Segment any-match are separate metrics. Human expert-vs-expert Top-3 analysis
+has 513 eligible recordings and is a separate analysis from model scoring.
 
-```bash
-python scripts/infer_direct_pairwise_template.py \
-  --pairs data/triplet_pairs.jsonl \
-  --audio-metadata data/audio_metadata.jsonl \
-  --out predictions/my_model_direct_pairwise.jsonl
+Missing tasks appear in the combined report and must not be described as a full
+benchmark result. Duplicate/unknown IDs and unresolved judge errors stop
+evaluation. The scorer verifies supplied artifacts; a normalized file alone
+cannot prove that an earlier failed response was not removed upstream.
 
-python scripts/infer_single_audio_template.py \
-  --task top3_score \
-  --inputs data/top3_audio_metadata.jsonl \
-  --out predictions/my_model_top3_score.jsonl
+## Reproduction boundary
 
-python scripts/infer_single_audio_template.py \
-  --task segment \
-  --inputs data/segment_metadata.jsonl \
-  --out predictions/my_model_segment.jsonl
-```
+Saved predictions and judge decisions yield deterministic metrics. Historical
+model outputs and judge outcomes are not bundled in this code repository, so
+the reference dataset alone cannot reproduce individual published model rows.
+Model inference adapters remain user supplied. The inference templates record
+requested settings, but adapters must actually enforce audio preprocessing,
+token budgets, decoding and model revision. See [prompts](prompts.md).
 
-The `call_model(...)` functions in those files are adapter stubs. Users should
-implement them with their own local model or API backend.
-Those scripts can write raw output rows with `response_text`; the raw rows can
-then be normalized with `scripts/postprocess_predictions.py` into canonical
-prediction JSONL files for scoring.
+The optional Claims runner requires an explicit endpoint, judge model and local
+tokenizer snapshot. Running it produces new decisions, which may differ from
+saved historical decisions. No endpoint or credentials are embedded in this
+repository. Historical internal claim IDs can differ from public claim UIDs;
+replay validates the exact reference-text/category multiset and preserves the
+saved IDs and ordering.
 
-Closed API models can change over time, and their exact outputs may depend on
-model versioning, serving behavior, and decoding settings. For that reason, the
-public benchmark package treats prediction JSONL files as the reproducible
-interface between model inference and scoring.
+## Maintainer regression
 
-## Recommended Paper-Result Workflow
-
-1. Download the benchmark dataset.
-2. Run `scripts/prepare_hf_release.py` to create scorer-ready reference files.
-   For triplet ranking, this uses `triplet_ranking_eval_units.jsonl` and keeps
-   `benchmark_included == true`.
-3. Generate or download model prediction JSONL files.
-4. If needed, normalize raw model outputs with `scripts/postprocess_predictions.py`.
-5. Run `scripts/evaluate_all.py`.
-6. Use the generated `results/all_metrics.json` to populate result tables.
-
-The scorer itself has no external runtime dependencies beyond Python.
+The release was checked against stored Open9 and Closed4 outputs from the final
+leaderboard, including its Main/Simple split. The validation record is described
+in [release validation](release_validation.md). This is a scorer/parser replay;
+it does not represent fresh model or judge inference.

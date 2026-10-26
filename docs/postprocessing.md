@@ -1,108 +1,85 @@
-# Post-Processing Raw Model Outputs
+# Post-processing raw responses
 
-The official metric commands consume **canonical prediction JSONL** files, not
-raw LALM text. Post-processing is needed only when an inference script saves the
-model's unprocessed text response.
-
-The intended file flow is:
+Use `scripts/postprocess_predictions.py` to convert archived first-response text
+to scorer fields. The default is the **Main** protocol. The pipeline is:
 
 ```text
-model/API response text
-  -> raw_outputs/*.jsonl              # optional archive, not scored directly
-  -> scripts/postprocess_predictions.py
-  -> predictions/*.jsonl              # canonical scorer input
-  -> vocalcoachbench evaluate-*
+raw response JSONL -> deterministic post-processing -> prediction JSONL -> metric commands
 ```
 
-If your inference code already writes canonical prediction rows with fields such
-as `winner`, `top3_issues`, `quality_score_0_5`, or `category`, you can skip
-this step and run the scorer directly.
-
-For direct pairwise ranking, `scripts/infer_direct_pairwise_template.py` is the
-template that creates the raw output file after a user implements `call_model`.
-`scripts/postprocess_predictions.py` then converts that raw file into the
-canonical direct-pairwise prediction file used by the scorer:
-
-```bash
-python scripts/infer_direct_pairwise_template.py \
-  --pairs data/triplet_pairs.jsonl \
-  --audio-metadata data/audio_metadata.jsonl \
-  --out raw_outputs/my_model_direct_pairwise_raw.jsonl
-
-python scripts/postprocess_predictions.py \
-  --task direct_pairwise \
-  --input raw_outputs/my_model_direct_pairwise_raw.jsonl \
-  --out predictions/my_model_direct_pairwise.jsonl
-```
-
-## Commands
-
-Normalize raw rows before scoring:
+Keep both files. Post-processing preserves raw response text, identifiers,
+presented Direct A/B identities, source receipts and error metadata. Duplicate
+IDs raise an error; a later successful retry cannot replace an earlier failure.
+Missing predictions remain errors in the scorer's reference denominator under
+`strict_all_attempts`. No model or judge is called during post-processing.
 
 ```bash
 python scripts/postprocess_predictions.py \
-  --task direct_pairwise \
-  --input raw_outputs/my_model_direct_pairwise_raw.jsonl \
-  --out predictions/my_model_direct_pairwise.jsonl \
-  --print-summary
+  --task top3_score --protocol main --input raw/main_top3.jsonl \
+  --out predictions/main_top3.jsonl --print-summary
 
 python scripts/postprocess_predictions.py \
-  --task top3_score \
-  --input raw_outputs/my_model_top3_score_raw.jsonl \
-  --out predictions/my_model_top3_score.jsonl \
-  --print-summary
+  --task segment --protocol simple --input raw/simple_segment.jsonl \
+  --out predictions/simple_segment.jsonl --print-summary
 
 python scripts/postprocess_predictions.py \
-  --task segment \
-  --input raw_outputs/my_model_segment_raw.jsonl \
-  --out predictions/my_model_segment.jsonl \
-  --print-summary
+  --task score --protocol simple --input raw/simple_score.jsonl \
+  --out predictions/simple_score.jsonl --print-summary
+
+python scripts/postprocess_predictions.py \
+  --task direct_pairwise --protocol main --input raw/direct.jsonl \
+  --out predictions/direct.jsonl --print-summary
 ```
 
-## Raw Output Rows, Not Scorer Input
+Simple Top-3 and Simple score require separate responses. `--task top3_score
+--protocol simple` extracts only categories; `--task score --protocol simple`
+extracts the separate quality score. Main Top-3 extracts both.
 
-Raw rows must preserve the benchmark identifier and the model text:
+## Parsing policy
+
+Top-3 and Segment use the deterministic category parser used in final aligned
+scoring: JSON fields are read first, with alias and free-text fallbacks. For
+example, `BREATH, PHONATION, PITCH` preserves that order. Invalid JSON with
+recognizable category names can still yield categories under this frozen
+policy; JSON syntax failure alone is not the structured-task failure metric.
+An explicit `error` always invalidates the row, including any otherwise
+parseable categories, winner or score. An empty raw response is not rescued by
+separately supplied convenience prediction fields.
+
+Main quality scoring accepts only an explicit `quality_score_0_5`,
+`qualityScore_0_5`, or `qualityScore` field in a JSON object, using the aligned
+scorer's existing fence, substring, escape and singleton-array handling. Values
+must be finite numbers in `[0, 5]`, numeric strings, or ratios with denominator
+5. Booleans, out-of-range values, arbitrary prose numbers, `score` fields and
+non-finite values fail; values are never clipped. A separate Simple score
+response can additionally be an entire scalar such as `3.5` or `3.5/5`.
+
+Direct winners refer to the **presented** Audio A/B order. The scorer maps them
+back to the canonical pair using `audio_a_id` and `audio_b_id`; preserve these
+fields even when the presented order is reversed. Unparsed winners and scores
+are written as explicit `null`, which prevents a scorer from reparsing and
+rescuing a failed prediction. The public parser fixes the historical bare
+`Audio B` first-line bug. An audit of all 6,804 stored Direct responses from
+12 published models found no affected non-error response, so this fix does not
+change the final leaderboard.
+
+## Source rows and compatibility
 
 ```json
-{"pair_id": "triplet_001_ab", "response_text": "{\"winner\":\"A\"}"}
-{"audio_id": "audio_001", "response_text": "{\"top3_issues\":[\"PITCH\",\"BREATH\",\"VOCALIZATION\"],\"quality_score_0_5\":3.2}"}
-{"sample_id": "segment_001", "response_text": "{\"category\":\"PITCH\"}"}
+{"audio_id":"recording_001","response_text":"{\"top3_issues\":[\"PITCH\",\"BREATH\",\"PHONATION\"],\"quality_score_0_5\":3.2}"}
+{"sample_id":"segment_001","response_text":"PHONATION"}
+{"pair_id":"pair_001","audio_a_id":"recording_a","audio_b_id":"recording_b","response_text":"{\"winner\":\"B\"}"}
 ```
 
-The normalizer first parses JSON objects, then applies conservative fallback
-rules for simple text answers. It maps category aliases to the seven benchmark
-categories and clips confidence to `[0, 1]` and quality scores to `[0, 5]`.
+`response`, `text` and `raw_output` are supported text aliases. Recording IDs
+can be provided as `audio_id`, `recording_id` or `sample_id`; nested task metadata
+is preserved. Resolve IDs against the canonical inventory before scoring; do
+not resolve Dataset-B collisions by filename. Already structured prediction
+rows without a raw-text field remain supported.
 
-The files named `examples/raw_*_outputs.jsonl` are small demonstrations of
-these parsing rules. They are not model prediction files from the paper.
-
-The direct pairwise prompt asks for a JSON object with `winner`, `confidence`,
-and `rationale`; a typical raw row therefore contains that JSON string in
-`response_text`. The simple-text fallback exists only to handle occasional
-non-JSON model outputs without changing the scoring interface.
-
-## Canonical Prediction Rows, Scorer Input
-
-The post-processed output files are canonical prediction files and can be passed
-directly to the scorer:
-
-```bash
-vocalcoachbench evaluate-triplet \
-  --pairs data/triplet_pairs.jsonl \
-  --predictions predictions/my_model_direct_pairwise.jsonl
-
-vocalcoachbench evaluate-top3 \
-  --references data/top3_references.jsonl \
-  --predictions predictions/my_model_top3_score.jsonl
-
-vocalcoachbench evaluate-score-triplet \
-  --pairs data/triplet_pairs.jsonl \
-  --scores predictions/my_model_top3_score.jsonl
-
-vocalcoachbench evaluate-segment \
-  --references data/segment_references.jsonl \
-  --predictions predictions/my_model_segment.jsonl
-```
-
-For maximum reproducibility, archive both the raw output JSONL files and the
-post-processed prediction JSONL files used for scoring.
+`--use-stored-parsed` is an explicit compatibility option for pinned historical
+Top-3/Segment report artifacts with an unchanged `parsed` object. It reads
+`parsed.top3_issues` or `parsed.segment_category`, while scores still use raw
+text. Before enabling it, verify the report's source hash and raw-text match.
+It is not a repair step or permission to generate a new model-assisted parse.
+Claims use their separately documented extraction and judge pipeline.

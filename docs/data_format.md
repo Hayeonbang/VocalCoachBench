@@ -20,8 +20,9 @@ backend.
 {"audio_id": "audio_001", "path": "audio/audio_001.wav", "song_id": "song_12"}
 ```
 
-`path` can be local, relative to the benchmark root, or a signed URL in hosted
-evaluation.
+`path` can be local or relative to the benchmark root; adapters may additionally
+support remote audio. Prepared metadata retains the full `recording_id` and
+its scorer-facing `audio_id`. Keep their mapping from the inventory.
 If `path` is `null`, the scorer can still use the reference row, but inference
 code must resolve the audio from source metadata or a local audio store before
 calling a model.
@@ -30,8 +31,9 @@ When using the Hugging Face dataset release, create these scorer-ready
 metadata/reference files with `scripts/prepare_hf_release.py`. See
 `docs/huggingface_dataset.md` for the expected downloaded layout.
 For Top-3 and score inference, use the prepared `top3_audio_metadata.jsonl`
-because it is keyed to `top3_references.jsonl`. The broader
-`audio_metadata.jsonl` mirrors the raw recording table.
+because it is keyed to `top3_references.jsonl`. Both metadata files contain the
+same canonical 515 recording identities. Canonical CLI scoring resolves full
+recording IDs through this inventory, without filename-only joins.
 
 ## Direct Pairwise Triplet Ranking
 
@@ -60,6 +62,11 @@ Prediction row:
 {"pair_id": "triplet_001_ab", "winner": "A", "confidence": 0.82}
 ```
 
+When presented audio order differs from the manifest, include `audio_a_id` and
+`audio_b_id` in the prediction. The winner is relative to this presented order;
+the scorer checks the pair identities and converts to manifest order. If both
+IDs are omitted, the prediction is interpreted in manifest order.
+
 The evaluator computes pairwise accuracy, Kendall's tau, exact ranking accuracy,
 cycle-or-tie rate, and missing-pair rate. If multiple expert reference orders
 exist for a triplet, the model is compared against each reference order and the
@@ -84,7 +91,10 @@ Score prediction row:
 {"audio_id": "audio_001_a", "quality_score_0_5": 4.1}
 ```
 
-This is not the main triplet-ranking protocol.
+Scores must be finite numbers in [0, 5]. Boolean, non-finite, out-of-range,
+missing and explicit null values are errors. Tied scores earn no pair credit.
+Main scores come from the Top-3 response; Simple scores use a separate prompt.
+Score ranking is a separate surface from Direct pairwise ranking.
 
 ## Top-3 Issue Prediction
 
@@ -100,7 +110,10 @@ Prediction row:
 {"audio_id": "audio_001", "top3_issues": ["PITCH", "VOCALIZATION", "DICTION"]}
 ```
 
-Metrics are averaged over reference lists for the same audio.
+Metrics are averaged over reference lists within each recording, giving each
+recording equal total weight. Headline `macro_f1` is the unweighted average of
+the seven per-class F1 values; absent classes have F1 zero. `f1_at_3` is a separate
+sample/reference-level overlap metric. Reference-ranked nDCG uses gains 3/2/1.
 
 ## Segment-Level Issue Classification
 
@@ -116,7 +129,9 @@ Prediction row:
 {"sample_id": "segment_001", "category": "PITCH"}
 ```
 
-The segment metric is any-match accuracy against the accepted expert labels.
+`match` credits any accepted expert label. `macro_f1` evaluates
+all seven classes, with all accepted reference labels as positives and a single
+predicted class. A missing prediction remains in both denominators.
 
 ## Categories
 
@@ -125,3 +140,19 @@ The seven issue categories are:
 ```text
 PITCH, RHYTHM, DICTION, BREATH, VOCALIZATION, TECHNIQUE, EXPRESSION
 ```
+
+Frozen generation prompts use `PHONATION`, which the scorer maps to the same
+class as historical annotation label `VOCALIZATION`.
+
+## Failures and provenance
+
+Each prediction file must contain at most one row per expected ID. Duplicate,
+unknown, missing or conflicting ID fields cause an input error; omitted expected
+rows remain scoring errors. An `error` field or failure `status` prevents valid
+looking output fields from reviving a failed attempt. Keep original responses
+and request metadata. Raw JSONL normalization is described in
+[postprocessing](postprocessing.md); Claims schemas are in [Claims](claims.md).
+
+CLI reports include source paths and SHA-256 hashes. Use `--require-canonical`
+with the complete prepared directory to enforce the pinned release. Example
+fixtures are explicitly reported as `custom_reference_set`.

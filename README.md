@@ -1,274 +1,117 @@
 # VocalCoachBench
 
 Evaluation toolkit for **VocalCoachBench: Benchmarking Audio-Language Models on
-Expert Feedback for Singing**.
+Expert Feedback for Singing**, accepted to **NeurIPS 2026, Evaluations & Datasets
+Track**.
 
-VocalCoachBench is a benchmark for evaluating audio-language models on expert
-vocal coaching feedback for singing. This repository contains the scorer,
-prompt templates, post-processing utilities, and data preparation scripts.
+Hayeon Bang, Hounsu Kim, Wonil Kim, and Juhan Nam
 
-- **Direct pairwise triplet ranking**: compare same-song performances through
-  three A/B audio comparisons per triplet.
-- **Top-3 issue prediction**: rank the three most salient vocal issue categories.
-- **Segment-level issue classification**: identify the main issue in an
-  expert-consensus vocal segment.
-- **Open-ended coaching prompts**: structured diagnosis and correction claim
-  templates for hosted or provider-specific judge pipelines.
+[Paper](https://arxiv.org/abs/2609.04241) ·
+[Dataset](https://huggingface.co/datasets/Hayeonbang/VocalCoachBench) ·
+[Demo and leaderboard](https://hayeonbang.github.io/VocalCoachBench/)
 
-Full dataset files are hosted separately. Small files under `examples/` are
-included only for smoke tests.
+Version **0.2.0** aligns the public scorer, raw-response parsers and frozen prompts
+with the final 2026-10-26 leaderboard. It includes deterministic structured
+metrics, offline replay of saved Claims judge outcomes, and an optional explicit
+judge runner. Scoring saved outputs makes no model or judge API calls.
 
-## What You Need
+## Evaluation scope
 
-This repository is a scorer, not a model inference server. To evaluate a model
-on a fresh machine, you need:
+Dataset version: `canonical515_physical_audio_1064refs`.
 
-- this repository,
-- the released benchmark reference files, such as `triplet_pairs.jsonl`,
-  `top3_references.jsonl`, and `segment_references.jsonl`,
-- your model prediction JSONL files in the formats below.
+| Evaluation | Reference population | Main outputs |
+|---|---|---|
+| Top-3 | 515 recordings (A=207, B=308), 1,064 expert annotations | Seven-class macro-F1; F1@3 and nDCG@3 diagnostics |
+| Segment | Frozen 262 consensus events | Seven-class macro-F1 and any-match accuracy |
+| Ranking | 189 triplets, 567 pairs, 1,134 reference attempts | Direct and score-derived pairwise accuracy |
+| Claims | 515 recordings, 6,162 diagnosis claims, 2,575 prescription slots | Strict hit, hit, valid and end-to-end rates |
 
-The scorer does not listen to audio files or call model APIs. Audio files are
-needed when generating model predictions, but the metric commands consume only
-the released reference JSONL files and prediction JSONL files.
-For inference, check the prepared `audio_metadata.jsonl` and
-`segment_metadata.jsonl`; rows with `path: null` must be resolved from the
-source dataset metadata or from your local audio store.
-The paper release packages audio for the redistributable rows only, so both
-packaged paths and rows with `path: null` can appear in the same prepared
-metadata file.
-For Top-3 and score inference, use `top3_audio_metadata.jsonl`; it is aligned
-exactly to the `top3_references.jsonl` audio IDs.
+The policy is `strict_all_attempts`: preserve the first stored model response,
+keep failures and missing responses in the reference denominator, and reject
+duplicate or unknown prediction IDs. Top-3 references receive equal total weight
+per recording. The scorer cannot establish first-attempt provenance from an
+already filtered prediction file; retain the original response logs.
 
-## File Roles
+Generation prompts use `PHONATION`; annotation/scorer label `VOCALIZATION` is its
+equivalent alias. Main and Simple prompts/parsers are separate protocols.
+The Segment release remains the frozen 262-event set used for the leaderboard.
 
-VocalCoachBench uses three different kinds of JSONL files:
+## Install and prepare
 
-| File type | Typical path | Purpose | Used by scorer? |
-| --- | --- | --- | --- |
-| Reference files | `data/triplet_pairs.jsonl`, `data/top3_references.jsonl` | Released benchmark labels/manifests | Yes |
-| Raw model outputs | `raw_outputs/my_model_*.jsonl` | Optional archive of unprocessed LALM text responses | No |
-| Prediction files | `predictions/my_model_*.jsonl` | Canonical, post-processed model outputs | Yes |
-
-The evaluator scores **prediction files**, not raw model text. If your inference
-code already writes canonical prediction JSONL, no extra normalization step is
-needed. If it stores raw LALM text in `response_text`, run
-`scripts/postprocess_predictions.py` first.
-
-## Installation
-
-On a fresh Ubuntu server:
+From a source checkout, use Python 3.10 or newer:
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y git python3 python3-pip python3-venv
-```
-
-Clone this repository and install the scorer:
-
-```bash
-git clone <repository-url> vocalcoachbench
-cd vocalcoachbench
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-## Quick Start
-
-Run the examples:
-
-```bash
-vocalcoachbench evaluate-triplet \
-  --pairs examples/triplet_pairs.jsonl \
-  --predictions examples/direct_pairwise_predictions.jsonl
-
-vocalcoachbench evaluate-top3 \
-  --references examples/top3_references.jsonl \
-  --predictions examples/top3_predictions.jsonl
-
-vocalcoachbench evaluate-score-triplet \
-  --pairs examples/triplet_pairs.jsonl \
-  --scores examples/score_predictions.jsonl
-
-vocalcoachbench evaluate-segment \
-  --references examples/segment_references.jsonl \
-  --predictions examples/segment_predictions.jsonl
-```
-
-Each command prints a JSON summary. Add `--out path/to/summary.json` to save it.
-
-You can also evaluate every available task in a directory at once:
+Download dataset revision `v2026.10.26` from the
+[Hugging Face dataset](https://huggingface.co/datasets/Hayeonbang/VocalCoachBench/tree/v2026.10.26),
+then prepare references:
 
 ```bash
-python scripts/evaluate_all.py \
-  --data-dir examples \
-  --predictions-dir examples \
-  --output-dir outputs/example_metrics
+python scripts/prepare_hf_release.py --hf-root /path/to/downloaded_dataset --out-dir data
 ```
 
-## Prediction Formats
+Preparation verifies canonical annotation hashes and writes a receipt alongside
+the references. Both a direct `annotations/` layout and the older nested
+`VocalCoachBench_annotations/` layout are accepted. The release contains full
+audio paths for 191 of 515 recordings and clips for 166 of 262 segments; resolve
+the remaining audio from the original datasets before inference.
 
-### Direct Pairwise Triplet Ranking
+## Score predictions
 
-For each pair in the released pair manifest, submit one row:
-
-```json
-{"pair_id": "p001_ab", "winner": "A", "confidence": 0.82, "rationale": "..."}
-```
-
-The direct pairwise prompt asks models to return JSON with `winner`,
-`confidence`, and `rationale`. The required scoring field is `winner`.
-
-### Top-3 Issue Prediction
-
-```json
-{"audio_id": "a001", "top3_issues": ["PITCH", "BREATH", "VOCALIZATION"]}
-```
-
-### Segment-Level Issue Classification
-
-```json
-{"sample_id": "s001", "category": "VOCALIZATION"}
-```
-
-Allowed issue categories:
-
-```text
-PITCH, RHYTHM, DICTION, BREATH, VOCALIZATION, TECHNIQUE, EXPRESSION
-```
-
-## Repository Layout
-
-```text
-vocalcoachbench/      Python package and metric implementations
-prompts/              Prompt templates used in the paper
-examples/             Tiny runnable examples
-docs/                 Data and submission format docs
-scripts/              Convenience scripts
-```
-
-## Dataset
-
-The full benchmark audio and annotation files are distributed separately, for
-example through a Hugging Face dataset release. After downloading the dataset,
-prepare scorer-ready reference files with:
+For a small smoke test:
 
 ```bash
-python scripts/prepare_hf_release.py \
-  --hf-root /path/to/downloaded_hf_release \
-  --out-dir data
+python scripts/evaluate_all.py --data-dir examples --predictions-dir examples --output-dir outputs/example_metrics
 ```
 
-The script accepts either the parent download directory or the
-`VocalCoachBench_annotations/` directory. It writes the JSONL files consumed by
-the scorer under `data/` and, by default, links `data/audio` to the downloaded
-release audio directory. The `data/` directory is ignored by git so that the
-evaluator repository remains code-only. See `docs/huggingface_dataset.md` for
-the expected release layout and quick checks.
-
-For triplet ranking, the HF release preserves all raw annotations and marks the
-benchmark subset explicitly. `scripts/prepare_hf_release.py` uses
-`annotations/triplet_ranking_eval_units.jsonl` and keeps rows where
-`benchmark_included == true`.
-
-Expected scorer-ready layout after preparation:
-
-```text
-data/
-  audio_metadata.jsonl
-  top3_audio_metadata.jsonl
-  triplet_pairs.jsonl
-  top3_references.jsonl
-  segment_references.jsonl
-  segment_metadata.jsonl
-  audio/
-predictions/
-  my_model_direct_pairwise.jsonl
-  my_model_top3.jsonl
-  my_model_scores.jsonl
-  my_model_segment.jsonl
-```
-
-Run the full benchmark scorers:
+For canonical benchmark predictions:
 
 ```bash
-vocalcoachbench evaluate-triplet \
-  --pairs data/triplet_pairs.jsonl \
-  --predictions predictions/my_model_direct_pairwise.jsonl \
-  --out results/my_model_triplet.json
-
-vocalcoachbench evaluate-top3 \
-  --references data/top3_references.jsonl \
-  --predictions predictions/my_model_top3.jsonl \
-  --out results/my_model_top3.json
-
-vocalcoachbench evaluate-score-triplet \
-  --pairs data/triplet_pairs.jsonl \
-  --scores predictions/my_model_scores.jsonl \
-  --out results/my_model_score_triplet.json
-
-vocalcoachbench evaluate-segment \
-  --references data/segment_references.jsonl \
-  --predictions predictions/my_model_segment.jsonl \
-  --out results/my_model_segment.json
+python scripts/evaluate_all.py --data-dir data --predictions-dir predictions --output-dir results --require-canonical --details
 ```
 
-Or run all available tasks at once:
+Use `top3_predictions.jsonl`, `segment_predictions.jsonl`,
+`score_predictions.jsonl`, and `direct_pairwise_predictions.jsonl`, or pass their
+paths explicitly. The report identifies unavailable tasks. Missing rows within
+a supplied task remain errors. Individual commands are also available through
+`vocalcoachbench --help`.
+
+Raw model responses require the matching parser, for example:
 
 ```bash
-python scripts/evaluate_all.py \
-  --data-dir data \
-  --predictions-dir predictions \
-  --output-dir results
+python scripts/postprocess_predictions.py --task top3_score --protocol main --input raw_outputs/top3.jsonl --out predictions/top3_predictions.jsonl
 ```
 
-## Inference Templates
+Keep `audio_id` values from the prepared manifest. Segment predictions use
+`sample_id`; Direct predictions use `pair_id` and record presented audio order.
+See [data formats](docs/data_format.md) and [postprocessing](docs/postprocessing.md).
 
-Provider-specific inference code is kept out of the public scorer to avoid API
-key handling, private paths, and vendor-specific dependencies. The template
-scripts define the expected prediction-file interface:
+## Claims
+
+Replay saved judge outcomes offline:
 
 ```bash
-python scripts/infer_direct_pairwise_template.py --help
-python scripts/infer_single_audio_template.py --help
+vocalcoachbench evaluate-claims --hf-root /path/to/downloaded_dataset --samples claims/model_samples.jsonl --jobs claims/jobs.jsonl --outcomes claims/outcomes.jsonl --out results/claims.json
 ```
 
-Implement the `call_model(...)` function in a local copy or adapter script for
-your model, then evaluate the resulting JSONL files with the scorer.
+This validates references, IDs, request hashes and judge outcomes before applying
+the fixed denominators. Unresolved judge errors stop scoring. See
+[Claims preparation and judging](docs/claims.md) for new submissions and the
+optional runner. Replaying stored decisions is deterministic; new judge
+inference is a separate experiment and may produce different decisions.
 
-## Post-Processing
+## Documentation
 
-Post-processing is the optional conversion from raw LALM text to canonical
-prediction JSONL:
+- [Dataset preparation and audio access](docs/huggingface_dataset.md)
+- [Frozen prompts and inference templates](docs/prompts.md)
+- [Prediction formats](docs/data_format.md)
+- [Submission workflow](docs/submission.md)
+- [Reproduction scope and validation](docs/reproducing_paper_results.md)
 
-```text
-raw_outputs/*.jsonl  ->  scripts/postprocess_predictions.py  ->  predictions/*.jsonl  ->  scorer
-```
-
-For example:
-
-```bash
-python scripts/postprocess_predictions.py \
-  --task top3_score \
-  --input examples/raw_top3_score_outputs.jsonl \
-  --out outputs/example_top3_score_predictions.jsonl \
-  --print-summary
-```
-
-The `examples/raw_*_outputs.jsonl` files are small demonstrations of the
-normalizer, not released model outputs. The post-processing rules are documented
-in `docs/postprocessing.md`.
-
-## Notes
-
-- Main triplet ranking uses **direct pairwise comparison**, not scalar quality
-  scores.
-- Score-derived triplet ranking is provided as an auxiliary diagnostic through
-  `evaluate-score-triplet`.
-- Open-ended coaching evaluation requires a judge model; this repo provides the
-  prompt templates and schemas, while judge execution depends on the evaluation
-  backend.
-- See `docs/reproducing_paper_results.md` for the intended separation between
-  model inference and deterministic scoring.
+The source checkout includes `scripts/`, `prompts/`, `examples/` and tests. The
+Python package contains the scorers and Claims runner; it has no required
+third-party runtime dependencies for offline scoring.
