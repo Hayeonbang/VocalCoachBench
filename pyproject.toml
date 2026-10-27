@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vocalcoachbench"
+version = "0.2.0"
+description = "Evaluation toolkit for VocalCoachBench"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+authors = [
+  {name = "Hayeon Bang"},
+  {name = "Hounsu Kim"},
+  {name = "Wonil Kim"},
+  {name = "Juhan Nam"}
+]
+license = {text = "MIT"}
+
+[project.urls]
+Paper = "https://arxiv.org/abs/2609.04241"
+Dataset = "https://huggingface.co/datasets/Hayeonbang/VocalCoachBench"
+Demo = "https://hayeonbang.github.io/VocalCoachBench"
+
+[project.scripts]
+vocalcoachbench = "vocalcoachbench.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["vocalcoachbench*"]

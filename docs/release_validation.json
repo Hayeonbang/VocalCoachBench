@@ -1,0 +1,63 @@
+{
+  "schema": "vcb_public_evaluator_validation_v1",
+  "toolkit_version": "0.2.0",
+  "dataset_version": "canonical515_physical_audio_1064refs",
+  "evaluation_policy": "strict_all_attempts; stored first responses; recording-balanced expert references; corrected515 format-reported Claims with fixed slots",
+  "leaderboard_date": "2026-10-26",
+  "leaderboard_sha256": "1629081a66e7d16d85b151c69b32e9cb79a914d58b64c71f3cfc05efccb80f4c",
+  "structured": {
+    "models_n": 13,
+    "surfaces_n": 51,
+    "numeric_comparisons_n": 456,
+    "difference_n": 0
+  },
+  "claims": {
+    "model_cohorts": 13,
+    "exact_metric_matches": 52,
+    "all_saved_judge_jobs_validated": 13390
+  },
+  "denominators": {
+    "recordings": 515,
+    "dataset_A": 207,
+    "dataset_B": 308,
+    "top3_annotations": 1064,
+    "segments": 262,
+    "ranking_triplets": 189,
+    "ranking_pairs": 567,
+    "ranking_reference_attempts": 1134,
+    "diagnosis_claims": 6162,
+    "prescription_slots": 2575
+  },
+  "unit_tests_passed": 52,
+  "new_model_calls": 0,
+  "new_judge_calls": 0,
+  "structured_comparison_abs_tolerance": 1e-12,
+  "claims_comparison": "exact ratios",
+  "receipt_sha256": {
+    "raw_structured_replay_report.json": "268ef99706205cb0f88d571d4c95667745f003d2d0e0e837a4f604c48ec93ef4",
+    "claims_replay_receipt.json": "ceb0fd2919133c704d4bd760554ed1db18244e3c07c75ee0bf2ad8df5fd2a454"
+  },
+  "code_sha256": {
+    "vocalcoachbench/__init__.py": "38ad45208ed56cbe4feffab07895f18df15c2aeaf886d08592bbf048e530ed44",
+    "vocalcoachbench/claims.py": "7fb451191baebcbfa31743a0b6b8a9394a6ba572e5250a9e7d672ca27f81c5f7",
+    "vocalcoachbench/claims_judge.py": "3fbed73fb2afc183c476fd8c0763ebc37d1172c096bdef281d26d060fde10ef0",
+    "vocalcoachbench/cli.py": "c0856792a8c2411caad3a0ab0b4ea2d6ddc45aa933da1d74f8550d48cce05f1f",
+    "vocalcoachbench/io.py": "57f100eb85d15010b2d12c166d45d61eda2a9bd27c0c9fe68aa575749a192dc0",
+    "vocalcoachbench/metrics.py": "dd2bb1fa98332559deabf18d541c2651ee9c47de10392c420938a11ea8730b8d",
+    "vocalcoachbench/postprocess.py": "66d2e8111ac45915c12979fb198aabfe7f261477998446bcf27b3ee953edcbc7",
+    "vocalcoachbench/protocol.py": "ea855fc100a9031cb9e8602ac503343b0a26a83ee8cf179264969ef4dc7ab689",
+    "vocalcoachbench/strict.py": "37170af3117b9e5ee457152d64dbb409cd04e18b6a3ed3c2fb88689cf0fd83a7",
+    "vocalcoachbench/taxonomy.py": "79f2f3335dcbfb6f69f51071119eb36f8054d3918d841d5943a3c4a4da757518",
+    "scripts/evaluate_all.py": "57bf3b8f16079e06a80caf83a4a7bb09ff1bffb8a9d1d0356455554c525f3854",
+    "scripts/infer_direct_pairwise_template.py": "fdef81c6c2b9f58886da4e19720aa1d6d43602bfaa5fb989b25e20b8be0e9679",
+    "scripts/infer_single_audio_template.py": "9994ce4543f41ab934f43b59b3d70c58904e6d6aa11e09c1a2bc0f8fb04449ad",
+    "scripts/postprocess_predictions.py": "a9c02acdd47332ee9ca85d8648d73d79e663e136d8d990e943a63c96cc5e290b",
+    "scripts/prepare_hf_release.py": "b85ab84e54f1048797f4ae5c07d3f333e2ef1e7713b613ebcfc92fa5804b8173"
+  },
+  "prompt_manifest_sha256": "c1522817e77d37d1d2f1970b8b5846643c9487cba506468f6976ddfea70b3d46",
+  "limitations": [
+    "Historical raw predictions and judge outcomes are not bundled.",
+    "Optional judge network runner was tested with local mocks and real input preflight only; no server calls.",
+    "Covo-Audio has no published Direct surface."
+  ]
+}
