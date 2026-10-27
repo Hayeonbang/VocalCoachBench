@@ -9,6 +9,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from vocalcoachbench import inference_io
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -82,7 +84,7 @@ class InferenceDurabilityTests(unittest.TestCase):
                 with patch.object(sys, "argv", args + ["--limit", "1"]), patch.object(module, "call_model", return_value={"response_text": "first"}):
                     module.main()
                 completed = output.read_bytes()
-                with patch.object(sys, "argv", args + ["--resume"]), patch.object(module, "call_model", return_value={"response_text": "second"}) as model, patch.object(module.os, "replace", side_effect=OSError("disk write failure")):
+                with patch.object(sys, "argv", args + ["--resume"]), patch.object(module, "call_model", return_value={"response_text": "second"}) as model, patch.object(inference_io.os, "replace", side_effect=OSError("disk write failure")):
                     with self.assertRaisesRegex(OSError, "disk write failure"):
                         module.main()
                     self.assertEqual(model.call_count, 1)

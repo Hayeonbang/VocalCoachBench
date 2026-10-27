@@ -1,6 +1,6 @@
 # Data Format
 
-All public files use UTF-8 JSONL: one JSON object per line.
+Reference and prediction files use UTF-8 JSONL: one JSON object per line.
 
 The scorer consumes reference JSONL files and prediction JSONL files. It does
 not run model inference. Audio files are used upstream to generate predictions;

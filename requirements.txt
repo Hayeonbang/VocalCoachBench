@@ -1,2 +1,0 @@
-# The core evaluator uses only the Python standard library.
-

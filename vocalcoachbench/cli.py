@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 from typing import Any
 
 from .io import read_jsonl, write_json
@@ -152,7 +151,6 @@ def cmd_prepare_claims(args: argparse.Namespace) -> None:
 def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
-    Path(".").resolve()
     args.func(args)
 
 

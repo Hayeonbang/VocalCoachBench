@@ -1,4 +1,4 @@
-# Submission guide
+# Evaluation workflow
 
 Prepare the pinned canonical dataset as described in
 [dataset preparation](huggingface_dataset.md), then preserve one first-attempt
@@ -8,7 +8,7 @@ failed responses with successful retries in the same result artifact.
 
 Use the formats in [data formats](data_format.md). If your adapter produces raw
 text, normalize it with the matching [parser](postprocessing.md). Keep the raw
-logs as provenance. Submit task-specific files:
+logs as provenance. Prepare task-specific files:
 
 - `top3_predictions.jsonl`: all 515 recording IDs; three ranked issue labels.
 - `score_predictions.jsonl`: explicit quality scores in [0, 5], using the same
@@ -33,8 +33,8 @@ combined command, or use `vocalcoachbench evaluate-claims` separately. Missing
 model claims retain the fixed denominators; unresolved judge outcomes prevent
 a complete Claims result.
 
-Include the output JSON reports, preparation receipt and original prediction
-artifacts with a submission. State dataset version
+Keep the output JSON reports, preparation receipt and original prediction
+artifacts together. Report dataset version
 `canonical515_physical_audio_1064refs`, protocol, denominator and
 `strict_all_attempts`. The combined report explicitly lists unavailable tasks;
-a partial task set is not a complete benchmark submission.
+a partial task set is not a complete benchmark result.

@@ -10,10 +10,8 @@ Hayeon Bang, Hounsu Kim, Wonil Kim, and Juhan Nam
 [Dataset](https://huggingface.co/datasets/Hayeonbang/VocalCoachBench) ·
 [Demo and leaderboard](https://hayeonbang.github.io/VocalCoachBench/)
 
-Version **0.2.0** aligns the public scorer, raw-response parsers and frozen prompts
-with the final 2026-10-26 leaderboard. It includes deterministic structured
-metrics, offline replay of saved Claims judge outcomes, and an optional explicit
-judge runner. Scoring saved outputs makes no model or judge API calls.
+Scorers, generation prompts and data preparation tools for structured and
+claim-based vocal coaching evaluation.
 
 ## Evaluation scope
 
@@ -34,7 +32,6 @@ already filtered prediction file; retain the original response logs.
 
 Generation prompts use `PHONATION`; annotation/scorer label `VOCALIZATION` is its
 equivalent alias. Main and Simple prompts/parsers are separate protocols.
-The Segment release remains the frozen 262-event set used for the leaderboard.
 
 ## Install and prepare
 
@@ -55,10 +52,9 @@ python scripts/prepare_hf_release.py --hf-root /path/to/downloaded_dataset --out
 ```
 
 Preparation verifies canonical annotation hashes and writes a receipt alongside
-the references. Both a direct `annotations/` layout and the older nested
-`VocalCoachBench_annotations/` layout are accepted. The release contains full
-audio paths for 191 of 515 recordings and clips for 166 of 262 segments; resolve
-the remaining audio from the original datasets before inference.
+the references. The release includes audio for 191 of 515 recordings and clips
+for 166 of 262 segments; resolve the remaining audio from the original datasets
+before inference. See [dataset preparation](docs/huggingface_dataset.md).
 
 ## Score predictions
 
@@ -80,6 +76,9 @@ paths explicitly. The report identifies unavailable tasks. Missing rows within
 a supplied task remain errors. Individual commands are also available through
 `vocalcoachbench --help`.
 
+For Main outputs containing both labels and scores, pass the same file through
+`--top3` and `--scores`.
+
 Raw model responses require the matching parser, for example:
 
 ```bash
@@ -98,20 +97,16 @@ Replay saved judge outcomes offline:
 vocalcoachbench evaluate-claims --hf-root /path/to/downloaded_dataset --samples claims/model_samples.jsonl --jobs claims/jobs.jsonl --outcomes claims/outcomes.jsonl --out results/claims.json
 ```
 
-This validates references, IDs, request hashes and judge outcomes before applying
-the fixed denominators. Unresolved judge errors stop scoring. See
-[Claims preparation and judging](docs/claims.md) for new submissions and the
-optional runner. Replaying stored decisions is deterministic; new judge
-inference is a separate experiment and may produce different decisions.
+See [Claims preparation and judging](docs/claims.md) to evaluate new responses.
+Saved-outcome replay is deterministic; new judge calls may produce different
+decisions. Unresolved judge errors stop scoring.
 
 ## Documentation
 
 - [Dataset preparation and audio access](docs/huggingface_dataset.md)
 - [Frozen prompts and inference templates](docs/prompts.md)
 - [Prediction formats](docs/data_format.md)
-- [Submission workflow](docs/submission.md)
+- [Evaluation workflow](docs/submission.md)
 - [Reproduction scope and validation](docs/reproducing_paper_results.md)
 
-The source checkout includes `scripts/`, `prompts/`, `examples/` and tests. The
-Python package contains the scorers and Claims runner; it has no required
-third-party runtime dependencies for offline scoring.
+Offline scoring uses only the Python standard library.

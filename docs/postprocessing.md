@@ -58,10 +58,7 @@ Direct winners refer to the **presented** Audio A/B order. The scorer maps them
 back to the canonical pair using `audio_a_id` and `audio_b_id`; preserve these
 fields even when the presented order is reversed. Unparsed winners and scores
 are written as explicit `null`, which prevents a scorer from reparsing and
-rescuing a failed prediction. The public parser fixes the historical bare
-`Audio B` first-line bug. An audit of all 6,804 stored Direct responses from
-12 published models found no affected non-error response, so this fix does not
-change the final leaderboard.
+rescuing a failed prediction.
 
 ## Source rows and compatibility
 

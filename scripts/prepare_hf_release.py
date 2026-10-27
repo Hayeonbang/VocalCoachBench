@@ -31,38 +31,8 @@ def release_root(path: str | Path) -> Path:
     )
 
 
-def pair_agreement(order_a: list[str], order_b: list[str]) -> int:
-    hits = 0
-    for left, right in itertools.combinations(order_a, 2):
-        hits += int((order_a.index(left) < order_a.index(right)) == (order_b.index(left) < order_b.index(right)))
-    return hits
-
-
-def clean_reference_orders(rows: list[dict[str, Any]], policy: str) -> list[list[str]]:
-    orders = [[str(item) for item in row["ranked_audio_ids_best_to_worst"]] for row in rows]
-    if policy == "all":
-        return orders
-    if policy != "clean":
-        raise ValueError(f"Unknown triplet policy: {policy}")
-
-    if len(orders) == 2:
-        return orders if pair_agreement(orders[0], orders[1]) >= 2 else []
-
-    unique_orders: list[list[str]] = []
-    for order in orders:
-        if order not in unique_orders:
-            unique_orders.append(order)
-    if len(unique_orders) == 1:
-        return [unique_orders[0], unique_orders[0]]
-    return []
-
-
-def build_triplet_pairs_from_eval_units(annotation_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]] | None:
-    eval_path = annotation_dir / "triplet_ranking_eval_units.jsonl"
-    if not eval_path.exists():
-        return None
-
-    eval_units = read_jsonl(eval_path)
+def build_triplet_pairs_from_eval_units(annotation_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    eval_units = read_jsonl(annotation_dir / "triplet_ranking_eval_units.jsonl")
     included = [row for row in eval_units if row.get("benchmark_included") is True]
     pair_rows: list[dict[str, Any]] = []
     for row in included:
@@ -104,9 +74,10 @@ def build_triplet_pairs_from_eval_units(annotation_dir: Path) -> tuple[list[dict
 
 
 def build_triplet_pairs(annotation_dir: Path, triplet_policy: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    eval_unit_result = build_triplet_pairs_from_eval_units(annotation_dir)
-    if eval_unit_result is not None and triplet_policy == "clean":
-        return eval_unit_result
+    if triplet_policy == "clean":
+        return build_triplet_pairs_from_eval_units(annotation_dir)
+    if triplet_policy != "all":
+        raise ValueError(f"Unknown triplet policy: {triplet_policy}")
 
     rankings = read_jsonl(annotation_dir / "triplet_rankings.jsonl")
     by_triplet: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -117,7 +88,7 @@ def build_triplet_pairs(annotation_dir: Path, triplet_policy: str) -> tuple[list
     skipped = 0
     kept_triplets = 0
     for triplet_id, rows in sorted(by_triplet.items()):
-        reference_orders = clean_reference_orders(rows, triplet_policy)
+        reference_orders = [[str(item) for item in row["ranked_audio_ids_best_to_worst"]] for row in rows]
         if not reference_orders:
             skipped += 1
             continue
