@@ -55,9 +55,9 @@
     <div class="tiles">
       <div class="tile"><b>515</b><span>recordings</span></div>
       <div class="tile"><b>18</b><span>expert trainers</span></div>
-      <div class="tile"><b>1,056</b><span>expert submissions</span></div>
-      <div class="tile"><b>12,051</b><span>atomic claims</span></div>
-      <div class="tile"><b id="model-count">13</b><span>models evaluated</span></div>
+      <div class="tile"><b>1,064</b><span>expert reviews</span></div>
+      <div class="tile"><b>12,216</b><span>atomic claims</span></div>
+      <div class="tile"><b id="model-count">12</b><span>models evaluated</span></div>
     </div>
   </div>
 </header>
@@ -97,7 +97,7 @@
       <div class="tax-head">Issue taxonomy <span>7 labels · 3 parent categories</span></div>
       <div class="tax-grid">
         <div class="tax-g"><span class="tax-p">Musical accuracy</span><div class="tax-chips"><span class="chip" style="--c:var(--pitch)">PITCH</span><span class="chip" style="--c:var(--rhythm)">RHYTHM</span></div></div>
-        <div class="tax-g"><span class="tax-p">Technical production</span><div class="tax-chips"><span class="chip" style="--c:var(--breath)">BREATH</span><span class="chip" style="--c:var(--vocalization)">PHONATION</span><span class="chip" style="--c:var(--technique)">TECHNIQUE</span></div></div>
+        <div class="tax-g"><span class="tax-p">Technical production</span><div class="tax-chips"><span class="chip" style="--c:var(--breath)">BREATH</span><span class="chip" style="--c:var(--vocalization)">VOCALIZATION</span><span class="chip" style="--c:var(--technique)">TECHNIQUE</span></div></div>
         <div class="tax-g"><span class="tax-p">Delivery</span><div class="tax-chips"><span class="chip" style="--c:var(--diction)">DICTION</span><span class="chip" style="--c:var(--expression)">EXPRESSION</span></div></div>
       </div>
     </div>
@@ -106,14 +106,14 @@
       <thead><tr><th>Annotation</th><th>Same-song</th><th>Diverse-song</th><th>Used for</th></tr></thead>
       <tbody>
         <tr><td>Annotators</td><td class="n">6</td><td class="n">12</td><td>Two independent reviews per recording</td></tr>
-        <tr><td>Coaching review <span class="tip" title="Free-form review written to the singer, in tagged feedback blocks, then decomposed into atomic diagnosis / correction / strength claims.">→ atomic claims</span></td><td class="n">1,397 blocks · 3,972 claims</td><td class="n">3,046 blocks · 8,079 claims</td><td>Open-ended diagnosis and correction (judge-based)</td></tr>
+        <tr><td>Coaching review <span class="tip" title="Free-form review written to the singer, in tagged feedback blocks, then decomposed into atomic diagnosis / correction / strength claims.">→ atomic claims</span></td><td class="n">1,397 blocks · 3,972 claims</td><td class="n">3,109 blocks · 8,244 claims</td><td>Open-ended diagnosis and correction (judge-based)</td></tr>
         <tr><td>Top-3 issue labels</td><td class="n">✓</td><td class="n">✓</td><td>Top-3 issue prediction</td></tr>
         <tr><td>Triplet ranking <span class="tip" title="Three performances of the same song ranked by the trainer, with a written rationale.">of 3 performances</span></td><td class="n">450 rankings · 189 eval triplets</td><td class="n">–</td><td>Pairwise ranking accuracy, Kendall's τ</td></tr>
-        <tr><td>Segment-grounded feedback</td><td class="n">–</td><td class="n">2,526 segments · 262 consensus events</td><td>Segment issue classification</td></tr>
+        <tr><td>Segment-grounded feedback</td><td class="n">–</td><td class="n">2,526 segments · 262 consensus events</td><td>Expert-localized segment issue classification</td></tr>
       </tbody>
     </table></div>
     </details>
-    <p class="claims-line">Atomic claims: <b>6,087</b> diagnosis · <b>4,527</b> correction · <b>1,437</b> strength.</p>
+    <p class="claims-line">Atomic claims: <b>6,162</b> diagnosis · <b>4,593</b> correction · <b>1,461</b> strength.</p>
   </div>
 </section>
 
@@ -153,7 +153,7 @@
 <section id="leaderboard" class="section alt">
   <div class="wrap">
     <h2><span class="num">04</span>Leaderboard</h2>
-    <p class="intro">13 aligned models: 9 open-weight and 4 closed API models. Updated 26 October 2026 from verified evaluation artifacts. Click a header to sort.</p>
+    <p class="intro">12 models: 8 open-weight and 4 closed API models, as reported in the NeurIPS 2026 paper. Updated 9 November 2026 from verified evaluation artifacts. Click a header to sort.</p>
     <p class="finding">Top-3 uses seven-class macro-F1, not the older F1@3 overlap metric. Scores below are percentages; N/A means unavailable, not zero.</p>
     <div class="toolbar">
       <label class="check"><input type="checkbox" id="allcols"> Show all columns</label>
@@ -163,10 +163,11 @@
       <summary>Details</summary>
       <ul>
         <li><b>Denominator.</b> All 515 recordings (same-song 207, diverse-song 308), <code>strict_all_attempts</code>: malformed or missing outputs count as errors.</li>
-        <li><b>Top-3.</b> Seven-class macro-F1 over 1,064 expert references, with each recording given equal total weight. PHONATION and the legacy internal label VOCALIZATION denote the same class.</li>
+        <li><b>Top-3.</b> Seven-class macro-F1 over 1,064 expert references, with each recording given equal total weight. VOCALIZATION and the legacy internal label PHONATION denote the same class.</li>
         <li><b>Judge.</b> <code>openai/gpt-oss-120b</code>: diagnosis = strict hit / coarse hit / miss / contradict; correction = valid / weak / invalid. Simple-protocol reviews are first decomposed into claims by the same model.</li>
         <li><b>Protocols.</b> Main = structured JSON prompts; Simple = short prompts with a distinct extraction protocol. Open/Closed identifies model access, not a separate evaluation protocol. The majority baseline sees no audio and has only a Top-3 metric.</li>
-        <li><b>Ranking.</b> Score-derived and Direct pairwise accuracy are separate tasks: 189 same-song triplets, 567 pair decisions, 1,134 expert-reference attempts. Audio Flamingo 3 and Music Flamingo Direct use concatenated audio; Covo Direct is N/A.</li>
+        <li><b>Ranking.</b> Score-derived and Direct pairwise accuracy are separate tasks: 189 same-song triplets, 567 pair decisions, 1,134 expert-reference attempts. Audio Flamingo 3 and Music Flamingo Direct use concatenated audio.</li>
+        <li><b>Models.</b> Covo-Audio, listed in the 26 October version, is omitted to match the 12 models reported in the paper.</li>
         <li><b>Other denominators.</b> Segment: 262. Diagnosis: 6,162 expert claims. Prescription validity: 2,575 fixed slots (515 × 5), including missing slots as failures; not validity conditional on emitted prescriptions.</li>
         <li><b>Claims policy.</b> Corrected515 format-reported: empty, unparseable or backend-error outputs retain zero claims and remain in the fixed denominator. See per-model notes for generation and parsing exceptions.</li>
       </ul>

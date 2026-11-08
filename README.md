@@ -28,8 +28,9 @@ python demo_site/scripts/build_data.py
 python demo_site/scripts/verify_leaderboard.py
 ```
 
-The leaderboard contains 13 models (9 open-weight, 4 closed API) and one
-no-audio reference baseline. All metrics are stored as unrounded ratios and
+The leaderboard export contains 13 models (9 open-weight, 4 closed API) and one
+no-audio reference baseline; the page shows the 12 models reported in the paper
+(Covo-Audio is hidden in `app.js`, and FunAudioChat is displayed as Fun-Audio-Chat). All metrics are stored as unrounded ratios and
 displayed as percentages. Top-3 uses recording-balanced seven-class macro-F1
 over 515 recordings / 1,064 references, with `strict_all_attempts`. Prescription
 validity and diagnosis-to-prescription E2E use 2,575 fixed slots, not only the

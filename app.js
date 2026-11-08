@@ -234,6 +234,11 @@
 
   // ---- section 4: leaderboard -----------------------------------------
   const LB = D.leaderboard;
+  // The paper reports 12 models: Covo-Audio stays in the canonical export but is not shown.
+  const HIDDEN = new Set(["covo-audio"]);
+  const ROWS = LB.rows.filter((r) => !HIDDEN.has(r.model_id));
+  const DISPLAY_NAME = { FunAudioChat: "Fun-Audio-Chat" };
+  const modelName = (r) => DISPLAY_NAME[r.model] || r.model;
   const COLS = [
     ["top3_macro_f1", "Top-3 macro-F1", "Top-3"],
     ["segment_macro_f1", "Segment macro-F1", "Segment"],
@@ -254,7 +259,7 @@
     return state.allCols ? COLS : CORE_ORDER.map((key) => COLS.find((c) => c.key === key));
   }
   function sortedRows() {
-    const rows = [...LB.rows, ...LB.reference_rows].map((r, i) => ({ r, i }));
+    const rows = [...ROWS, ...LB.reference_rows].map((r, i) => ({ r, i }));
     if (!state.sort) return rows.map((x) => x.r);
     const { key, dir } = state.sort;
     const col = COLS.find((c) => c.key === key);
@@ -293,7 +298,7 @@
       return h("tr", { class: isReference(r) ? "ref" : "", "data-model-id": r.model_id },
         h("td", null, h("span", { class: "chip", style: "--c:" + PROTO[proto], title: PROTO_TITLE[proto] }, proto)),
         h("td", null, isReference(r) ? "No audio" : r.access === "closed" ? "Closed" : "Open"),
-        h("td", { class: "model", title: (r.notes || []).join("\n") }, r.model, r.notes && r.notes.length ? " *" : ""),
+        h("td", { class: "model", title: (r.notes || []).join("\n") }, modelName(r), r.notes && r.notes.length ? " *" : ""),
         cols.map((c) => { const v = c.get(r);
           return h("td", { class: v === null || v === undefined ? "empty" : "", "data-metric": c.key }, formatMetric(v)); }));
     });
@@ -301,14 +306,14 @@
   }
 
   function renderLeaderboardProvenance() {
-    document.getElementById("model-count").textContent = LB.rows.length;
+    document.getElementById("model-count").textContent = ROWS.length;
     document.getElementById("leaderboard-provenance").replaceChildren(
       h("p", null, "Dataset version: ", h("code", null, LB.dataset_version)),
       h("p", null, "Source artifact: ", h("a", { href: "../" + LB.publication_source.path }, LB.publication_source.path)),
       h("p", null, "Source SHA-256: ", h("code", null, LB.publication_source.sha256)));
     document.getElementById("leaderboard-notes").replaceChildren(
       h("h3", null, "Per-model provenance and caveats"),
-      h("ul", null, LB.rows.filter((r) => r.notes && r.notes.length).map((r) => h("li", null, h("b", null, r.model + ": "), r.notes.join(" ")))),
+      h("ul", null, ROWS.filter((r) => r.notes && r.notes.length).map((r) => h("li", null, h("b", null, modelName(r) + ": "), r.notes.join(" ")))),
       h("h3", null, "Metric definitions"),
       h("ul", null, COLS.map((c) => h("li", null, h("b", null, c.label + ": "), LB.metric_definitions[c.key].definition))));
   }
